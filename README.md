@@ -5,6 +5,8 @@
 
 A simple WinForms example showing how to implement [Updatum](https://github.com/sn4k3/Updatum) for automatic updates from GitHub Releases.
 
+![UpdatumDemo App](image.png)
+
 ## Features
 
 - ✅ Auto-check for updates from GitHub Releases
