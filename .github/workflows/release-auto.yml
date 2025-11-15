@@ -1,0 +1,81 @@
+name: Auto Release WinForms (Updatum)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build with auto version
+        run: |
+          # Base major.minor – update this if you want to change major/minor
+          $baseVersion = "1.0"
+
+          # Use GitHub run number as the patch part
+          $version = "$baseVersion.${{ github.run_number }}"
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+          dotnet publish UpdatumDemo/UpdatumDemo.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:Version=$version `
+            -p:FileVersion=$version `
+            -p:AssemblyVersion=$version `
+            -p:InformationalVersion=$version `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o publish
+
+      - name: Create ZIP asset
+        run: |
+          $appName = "UpdatumDemo"
+          $runtime = "win-x64"
+          $zipName = "${appName}_${runtime}_v${{ env.VERSION }}.zip"
+
+          cd publish
+          Compress-Archive -Path * -DestinationPath "../$zipName"
+          cd ..
+
+          echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          body: |
+            Auto release v${{ env.VERSION }}
+
+            ## What's New
+            - Auto-generated release from commit ${{ github.sha }}
+
+            ## Download
+            Download and extract `${{ env.ZIP_NAME }}` to install this version.
+
+            ## Installation
+            1. Download the ZIP file below
+            2. Extract to a folder
+            3. Run `UpdatumDemo.exe`
+            4. The app will auto-update when new versions are released!
+          files: ${{ env.ZIP_NAME }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
